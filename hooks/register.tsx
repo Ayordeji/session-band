@@ -85,8 +85,13 @@ export const register: Register = on => {
 
   on('prompt.submit', async ($, e, next) => {
     try {
-      if ((await read($, title)) === null && e.text.trim()) {
-        const first = e.text.trim().split('\n')[0]!
+      const current = await read($, title)
+      // A system notice (<task-notification> and the like) is not a title.
+      if (current?.startsWith('<')) await update($, title, () => null)
+      const text = e.text.replace(/<[^>]*>[\s\S]*?<\/[^>]*>/g, '').trim()
+      const isPerson = !e.isMeta && !e.command && text && !text.startsWith('<') && !text.startsWith('/')
+      if ((current === null || current.startsWith('<')) && isPerson) {
+        const first = text.split('\n')[0]!
         await update($, title, () => (first.length > 80 ? `${first.slice(0, 77)}…` : first))
       }
     } catch {
