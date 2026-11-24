@@ -110,52 +110,53 @@ export const register: Register = on => {
 
     const { Box, Text } = $.ui.resolve(e)
 
-    // One labelled meter: a dim label, a coloured bar, then the reading.
-    const meter = (key: string, label: string, pctFilled: number, tone: string, reading: string, note = '') => {
-      const [filled, empty] = bar(pctFilled, 10)
+    // A rounded-looking pill: tinted background, coloured text, an optional mini bar.
+    const pill = (key: string, bg: string, fg: string, text: string, fill?: number, track = '#3f3f46') => {
+      const [filled, empty] = fill === undefined ? ['', ''] : bar(fill, 8)
       return (
-        <Box key={key} marginRight={3}>
-          <Text dimColor>{label} </Text>
-          <Text color={tone}>{filled}</Text>
-          <Text color="#3f3f46">{empty}</Text>
-          <Text color={tone} bold> {reading}</Text>
-          {note ? <Text dimColor> {note}</Text> : null}
+        <Box key={key} backgroundColor={bg} paddingX={1} marginRight={1}>
+          <Text color={fg}>{text}</Text>
+          {fill === undefined ? null : <Text color={fg}> {filled}</Text>}
+          {fill === undefined ? null : <Text color={track}>{empty}</Text>}
         </Box>
       )
     }
-    const leftTone = (left: number) => (left <= 10 ? '#f87171' : left <= 30 ? '#fbbf24' : '#4ade80')
-    const memTone = pct >= WARN_AT ? '#f87171' : pct >= 50 ? '#fbbf24' : '#60a5fa'
+    const leftTone = (left: number) => (left <= 10 ? '#f87171' : left <= 30 ? '#fbbf24' : '#c4b5fd')
+    const memFg = hot ? '#f87171' : pct >= 50 ? '#fbbf24' : '#93c5fd'
+    const memBg = hot ? '#3a1d1d' : '#1d2a3a'
 
     return (
-      <Box flexDirection="column" borderStyle="round" borderColor={hot ? '#7f1d1d' : '#3f3f46'} paddingX={1}>
+      <Box flexDirection="column" borderStyle="round" borderColor="#3a3a3a" paddingX={1}>
         <Box justifyContent="space-between">
           <Box flexShrink={1}>
-            <Text color="#a78bfa" bold>◆ </Text>
+            <Text dimColor bold>THREAD </Text>
             <Text bold wrap="truncate-end">{name ?? 'Untitled thread'}</Text>
           </Box>
-          <Text dimColor>{clock} UTC · {fmtDur(now - usage.startedAt)} in</Text>
+          {hot ? <Text color="#ff6b6b">time to prepare a new session</Text> : null}
+        </Box>
+
+        <Box justifyContent="space-between" marginTop={1}>
+          <Box flexWrap="wrap">
+            {pill('cache', cacheOk ? '#16301f' : '#3a1d1d', cacheOk ? '#4ade80' : '#f87171',
+              cacheOk ? `● cache ${cacheLeft}m · ${hit}% hit` : '● cache expired', cacheOk ? hit : 0, cacheOk ? '#2f4a38' : '#4b2a2a')}
+            {pill('mem', memBg, memFg, `memory ${pct}%`, pct)}
+          </Box>
+          {pill('time', '#2a2a2a', '#d4d4d4', `${clock} UTC · session ${fmtDur(now - usage.startedAt)}`)}
         </Box>
 
         <Box marginTop={1} flexWrap="wrap">
-          {meter('mem', 'Memory', pct, memTone, `${pct}% full`, hot ? '· start a new chat soon' : '')}
-          {meter('cache', 'Cache ', cacheOk ? hit : 0, cacheOk ? '#4ade80' : '#f87171', cacheOk ? `${cacheLeft}m left` : 'expired', `· ${hit}% reused`)}
-        </Box>
-
-        <Box flexWrap="wrap">
-          {limits.length === 0 ? (
-            <Text dimColor>Limits  appear after Claude's next reply</Text>
-          ) : (
-            limits.map(l => {
-              const left = Math.max(0, Math.round(100 - l.percentUsed))
-              return meter(l.kind, l.kind === 'five_hour' ? 'Limit 5h' : l.kind === 'seven_day' ? 'Limit wk' : limitName(l.kind), left, leftTone(left), `${left}% left`, resetIn(l.resetsAt))
-            })
-          )}
+          {limits.length === 0
+            ? pill('nolimits', '#2a2a2a', '#a1a1aa', 'limits appear after the next reply')
+            : limits.map(l => {
+                const left = Math.max(0, Math.round(100 - l.percentUsed))
+                const name5 = l.kind === 'five_hour' ? '5h limit' : l.kind === 'seven_day' ? 'weekly limit' : `${limitName(l.kind)} limit`
+                return pill(l.kind, '#2e1f4a', leftTone(left), `● ${name5} ${left}% left ${resetIn(l.resetsAt)}`, left, '#4c3a6e')
+              })}
         </Box>
 
         <Box marginTop={1}>
-          <Text color="#52525b">“</Text>
+          <Text dimColor>│ </Text>
           <Text dimColor italic>{quote}</Text>
-          <Text color="#52525b">”</Text>
         </Box>
       </Box>
     )
