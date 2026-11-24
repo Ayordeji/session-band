@@ -1,9 +1,12 @@
 # session-band
 
-A dashboard band above the prompt. It shows the thread title (your first prompt, or set it with `/thread <title>`),
-a warning once context passes 70%, a prompt-cache chip (minutes left of a 60-minute TTL and cache hit rate),
-a context meter, the clock (UTC) with session length, your 5-hour and weekly usage limits left with reset times,
-and a rotating quote.
+A dashboard band above the prompt. It shows:
+
+- **Thread title**: your first message, or set it with `/thread <title>`. Also the clock (UTC) and how long the session has run.
+- **Memory**: how full Claude's memory of this chat (its context window) is. It turns red at 70%: start a new chat soon.
+- **Cache**: minutes left before the saved copy of this chat expires (60-minute lifetime assumed), and how much of each reply reused it.
+- **Limits**: your 5-hour and weekly plan limits left, with reset times (Claude plan logins only).
+- A rotating quote.
 
 ## Install
 

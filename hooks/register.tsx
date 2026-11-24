@@ -101,68 +101,61 @@ export const register: Register = on => {
     const resetIn = (iso?: string) => {
       if (!iso) return ''
       const ms = Date.parse(iso) - now
-      if (!(ms > 0)) return ' · resets now'
+      if (!(ms > 0)) return '· resets now'
       const h = Math.floor(ms / 3600000)
-      return h >= 24 ? ` · resets in ${Math.floor(h / 24)}d ${h % 24}h` : ` · resets in ${fmtDur(ms)}`
+      return h >= 24 ? `· resets in ${Math.floor(h / 24)}d ${h % 24}h` : `· resets in ${fmtDur(ms)}`
     }
     const limits = usage.rateLimits
     const quote = QUOTES[Math.floor(now / (10 * 60000)) % QUOTES.length]
-    const [ctxOn, ctxOff] = bar(pct)
-    const [cOn, cOff] = bar(cacheOk ? hit : 0)
 
     const { Box, Text } = $.ui.resolve(e)
 
+    // One labelled meter: a dim label, a coloured bar, then the reading.
+    const meter = (key: string, label: string, pctFilled: number, tone: string, reading: string, note = '') => {
+      const [filled, empty] = bar(pctFilled, 10)
+      return (
+        <Box key={key} marginRight={3}>
+          <Text dimColor>{label} </Text>
+          <Text color={tone}>{filled}</Text>
+          <Text color="#3f3f46">{empty}</Text>
+          <Text color={tone} bold> {reading}</Text>
+          {note ? <Text dimColor> {note}</Text> : null}
+        </Box>
+      )
+    }
+    const leftTone = (left: number) => (left <= 10 ? '#f87171' : left <= 30 ? '#fbbf24' : '#4ade80')
+    const memTone = pct >= WARN_AT ? '#f87171' : pct >= 50 ? '#fbbf24' : '#60a5fa'
+
     return (
-      <Box flexDirection="column" borderStyle="round" borderColor="#3a3a3a" paddingX={1}>
+      <Box flexDirection="column" borderStyle="round" borderColor={hot ? '#7f1d1d' : '#3f3f46'} paddingX={1}>
         <Box justifyContent="space-between">
           <Box flexShrink={1}>
-            <Text dimColor bold>THREAD </Text>
+            <Text color="#a78bfa" bold>◆ </Text>
             <Text bold wrap="truncate-end">{name ?? 'Untitled thread'}</Text>
           </Box>
-          {hot ? <Text color="#ff6b6b">Context {pct}% · time to prepare a new session</Text> : <Text dimColor>Context {pct}%</Text>}
-        </Box>
-
-        <Box justifyContent="space-between" marginTop={1}>
-          <Box>
-            <Box key="cache" backgroundColor="#16301f" paddingX={1} marginRight={1}>
-              <Text color={cacheOk ? '#4ade80' : '#f87171'}>● cache {cacheLeft}m · {hit}% hit </Text>
-              <Text color={cacheOk ? '#4ade80' : '#f87171'}>{cOn}</Text>
-              <Text color="#2f4a38">{cOff}</Text>
-            </Box>
-            <Box key="ctx" backgroundColor={hot ? '#3a1d1d' : '#1d2a3a'} paddingX={1}>
-              <Text color={hot ? '#f87171' : '#93c5fd'}>context {pct}% </Text>
-              <Text color={hot ? '#f87171' : '#93c5fd'}>{ctxOn}</Text>
-              <Text color="#4b4b4b">{ctxOff}</Text>
-            </Box>
-          </Box>
-          <Box backgroundColor="#2a2a2a" paddingX={1}>
-            <Text color="#d4d4d4">{clock} UTC · session {fmtDur(now - usage.startedAt)}</Text>
-          </Box>
+          <Text dimColor>{clock} UTC · {fmtDur(now - usage.startedAt)} in</Text>
         </Box>
 
         <Box marginTop={1} flexWrap="wrap">
+          {meter('mem', 'Memory', pct, memTone, `${pct}% full`, hot ? '· start a new chat soon' : '')}
+          {meter('cache', 'Cache ', cacheOk ? hit : 0, cacheOk ? '#4ade80' : '#f87171', cacheOk ? `${cacheLeft}m left` : 'expired', `· ${hit}% reused`)}
+        </Box>
+
+        <Box flexWrap="wrap">
           {limits.length === 0 ? (
-            <Text dimColor>limits: shown after the next reply (claude.ai plan logins only)</Text>
+            <Text dimColor>Limits  appear after Claude's next reply</Text>
           ) : (
             limits.map(l => {
-              const left = Math.max(0, Math.round((100 - l.percentUsed) * 10) / 10)
-              const [lOn, lOff] = bar(left)
-              const tone = left <= 10 ? '#f87171' : left <= 30 ? '#fbbf24' : '#4ade80'
-              return (
-                <Box key={l.kind} backgroundColor="#1f2937" paddingX={1} marginRight={1}>
-                  <Text color={tone}>{limitName(l.kind)} limit {left}% left </Text>
-                  <Text color={tone}>{lOn}</Text>
-                  <Text color="#4b4b4b">{lOff}</Text>
-                  <Text dimColor>{resetIn(l.resetsAt)}</Text>
-                </Box>
-              )
+              const left = Math.max(0, Math.round(100 - l.percentUsed))
+              return meter(l.kind, l.kind === 'five_hour' ? 'Limit 5h' : l.kind === 'seven_day' ? 'Limit wk' : limitName(l.kind), left, leftTone(left), `${left}% left`, resetIn(l.resetsAt))
             })
           )}
         </Box>
 
         <Box marginTop={1}>
-          <Text dimColor>│ </Text>
+          <Text color="#52525b">“</Text>
           <Text dimColor italic>{quote}</Text>
+          <Text color="#52525b">”</Text>
         </Box>
       </Box>
     )
