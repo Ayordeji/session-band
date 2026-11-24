@@ -31,6 +31,12 @@ const bar = (pct: number, width = 8) => {
   const full = Math.max(0, Math.min(width, Math.round((pct / 100) * width)))
   return ['━'.repeat(full), '━'.repeat(width - full)] as const
 }
+// Each limit gets its own colour so the pills are easy to tell apart.
+const LIMIT_STYLE: Record<string, { bg: string; fg: string; track: string }> = {
+  five_hour: { bg: '#0f2f2e', fg: '#5eead4', track: '#1f4d4a' },
+  seven_day: { bg: '#2e1f4a', fg: '#c4b5fd', track: '#4c3a6e' },
+  other: { bg: '#3a2a12', fg: '#fdba74', track: '#5c4320' },
+}
 const limitName = (kind: string) =>
   kind === 'five_hour' ? '5-hour' : kind === 'seven_day' ? 'weekly' : kind === 'spend_limit' ? 'spend' : kind.replace(/_/g, ' ')
 
@@ -114,14 +120,13 @@ export const register: Register = on => {
     const pill = (key: string, bg: string, fg: string, text: string, fill?: number, track = '#3f3f46') => {
       const [filled, empty] = fill === undefined ? ['', ''] : bar(fill, 8)
       return (
-        <Box key={key} backgroundColor={bg} paddingX={1} marginRight={1}>
-          <Text color={fg}>{text}</Text>
+        <Box key={key} backgroundColor={bg} paddingX={1} marginRight={2} flexShrink={0}>
+          <Text color={fg} wrap="truncate-end">{text}</Text>
           {fill === undefined ? null : <Text color={fg}> {filled}</Text>}
           {fill === undefined ? null : <Text color={track}>{empty}</Text>}
         </Box>
       )
     }
-    const leftTone = (left: number) => (left <= 10 ? '#f87171' : left <= 30 ? '#fbbf24' : '#c4b5fd')
     const memFg = hot ? '#f87171' : pct >= 50 ? '#fbbf24' : '#93c5fd'
     const memBg = hot ? '#3a1d1d' : '#1d2a3a'
 
@@ -144,13 +149,19 @@ export const register: Register = on => {
           {pill('time', '#2a2a2a', '#d4d4d4', `${clock} UTC · session ${fmtDur(now - usage.startedAt)}`)}
         </Box>
 
-        <Box marginTop={1} flexWrap="wrap">
+        <Box marginTop={1} flexDirection="column" gap={1}>
           {limits.length === 0
-            ? pill('nolimits', '#2a2a2a', '#a1a1aa', 'limits appear after the next reply')
+            ? <Box>{pill('nolimits', '#2a2a2a', '#a1a1aa', 'limits appear after the next reply')}</Box>
             : limits.map(l => {
                 const left = Math.max(0, Math.round(100 - l.percentUsed))
-                const name5 = l.kind === 'five_hour' ? '5h limit' : l.kind === 'seven_day' ? 'weekly limit' : `${limitName(l.kind)} limit`
-                return pill(l.kind, '#2e1f4a', leftTone(left), `● ${name5} ${left}% left ${resetIn(l.resetsAt)}`, left, '#4c3a6e')
+                const style = LIMIT_STYLE[l.kind] ?? LIMIT_STYLE.other!
+                const label = l.kind === 'five_hour' ? '5h limit' : l.kind === 'seven_day' ? 'weekly limit' : `${limitName(l.kind)} limit`
+                const fg = left <= 10 ? '#f87171' : left <= 30 ? '#fbbf24' : style.fg
+                return (
+                  <Box key={l.kind}>
+                    {pill(l.kind, style.bg, fg, `● ${label} ${left}% left ${resetIn(l.resetsAt)}`, left, style.track)}
+                  </Box>
+                )
               })}
         </Box>
 
