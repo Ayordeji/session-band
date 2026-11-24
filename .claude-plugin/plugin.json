@@ -1,0 +1,1 @@
+{ "name": "session-band", "version": "0.1.0", "description": "Session dashboard band above the prompt: thread, cache, context, git, spend, clock and a quote.", "types": "./types/index.d.ts", "license": "MIT" }
